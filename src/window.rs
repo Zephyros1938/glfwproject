@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+//useful: https://github.com/ANtlord/glstudy/blob/master/src/main.rs
+
 use glfw::*;
 
 pub struct Window {
@@ -73,4 +75,12 @@ impl WindowTrait for Window {
             event_polls: events,
         }
     }
+}
+
+pub struct Shader<DataType>
+where
+    DataType: Sized,
+{
+    data: DataType,
+    //TODO: Add shader type
 }

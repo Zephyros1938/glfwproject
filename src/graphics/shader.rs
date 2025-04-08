@@ -1,92 +1,21 @@
-use std::time::Duration;
+use std::{collections::HashMap, marker::PhantomData};
+
+use opengles::glesv2 as gl;
+
 // useful:
 //      https://github.com/ANtlord/glstudy/blob/master/src/main.rs
 //      https://github.com/angular-rust/opengles-tutorial/blob/main/lesson-02/src/main.rs
+//      https://github.com/Zephyros1938/ConsoleApp1/blob/main/Assets/Scripts/Shader.cs
 
 static SHADERS_PATH: include_dir::Dir = include_dir::include_dir!("shaders");
-
-use glfw::*;
-use opengles::glesv2 as gl;
-
-pub struct Window {
-    glfw: Glfw,
-    window: PWindow,
-    event_polls: glfw::GlfwReceiver<(f64, WindowEvent)>,
-}
-
-pub trait WindowTrait {
-    fn new(title: &str, width: u32, height: u32) -> Self;
-    fn mainloop_logic(&mut self);
-    fn event_logic(&mut self);
-    fn run(&mut self);
-}
-
-impl WindowTrait for Window {
-    fn mainloop_logic(&mut self) {
-        unsafe {}
-    }
-
-    fn event_logic(&mut self) {
-        self.glfw.poll_events();
-        for (_, event) in glfw::flush_messages(&self.event_polls) {
-            match event {
-                glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                    self.window.set_should_close(true)
-                }
-                glfw::WindowEvent::Key(k, _, a, m) => {
-                    println!("Key {:?} {:?} with mod {:?}", k, a, m);
-                }
-                _ => {}
-            }
-        }
-    }
-
-    fn run(&mut self) {
-        while !self.window.should_close() {
-            self.event_logic();
-            self.mainloop_logic();
-
-            // The rest of the game loop goes here...
-            //
-
-            self.window.swap_buffers();
-
-            std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
-        }
-    }
-
-    fn new(title: &str, width: u32, height: u32) -> Self {
-        let mut glfw = glfw::init(glfw::fail_on_errors!()).unwrap();
-
-        let (mut window, events) = glfw
-            .create_window(width, height, title, glfw::WindowMode::Windowed)
-            .expect("Could not create window.");
-
-        window.set_key_polling(true);
-        //gl::load_with(|s| window.get_proc_address(s) as *const _);
-        window.make_current();
-        window.set_cursor_pos_polling(true);
-
-        gl::clear_color(1., 0.3, 0.3, 0.0);
-
-        window.make_current();
-
-        let sh: Shader<u8> = Shader::new("default.vert", "default.frag");
-
-        Self {
-            glfw,
-            window,
-            event_polls: events,
-        }
-    }
-}
 
 pub struct Shader<DataType>
 where
     DataType: Sized,
 {
-    data: Vec<DataType>,
     program: gl::GLuint,
+    phantom: PhantomData<DataType>,
+    uniforms: UniformMap,
 }
 
 impl<DataType> Shader<DataType> {
@@ -117,9 +46,18 @@ impl<DataType> Shader<DataType> {
         gl::delete_shader(vertex_shader);
         gl::delete_shader(fragment_shader);
         Self {
-            data: vec![],
             program,
+            phantom: PhantomData,
+            uniforms: UniformMap::new(),
         }
+    }
+
+    pub fn useprogram(self) {
+        gl::use_program(self.program);
+    }
+
+    pub fn get_attrib_location(self, name: &str) -> gl::GLint {
+        gl::get_attrib_location(self.program, name)
     }
 }
 
@@ -140,4 +78,24 @@ fn shader_source(source: &[u8], kind: gl::GLenum) -> gl::GLuint {
         );
     };
     id
+}
+
+struct UniformMap {
+    uniforms: HashMap<String, Box<dyn std::any::Any>>,
+}
+
+impl UniformMap {
+    pub fn new() -> Self {
+        Self {
+            uniforms: HashMap::new(),
+        }
+    }
+
+    pub fn insert<T: Sized + 'static>(&mut self, name: String, data: T) {
+        if !self.uniforms.contains_key(&name) {
+            self.uniforms.insert(name, Box::new(data));
+        } else {
+            panic!("{}", format!("Could not insert uniform {}!", name));
+        }
+    }
 }

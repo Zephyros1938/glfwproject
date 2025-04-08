@@ -1,8 +1,12 @@
 use std::time::Duration;
+// useful:
+//      https://github.com/ANtlord/glstudy/blob/master/src/main.rs
+//      https://github.com/angular-rust/opengles-tutorial/blob/main/lesson-02/src/main.rs
 
-//useful: https://github.com/ANtlord/glstudy/blob/master/src/main.rs
+static SHADERS_PATH: include_dir::Dir = include_dir::include_dir!("shaders");
 
 use glfw::*;
+use opengles::glesv2 as gl;
 
 pub struct Window {
     glfw: Glfw,
@@ -59,15 +63,15 @@ impl WindowTrait for Window {
             .expect("Could not create window.");
 
         window.set_key_polling(true);
-        gl::load_with(|s| window.get_proc_address(s) as *const _);
+        //gl::load_with(|s| window.get_proc_address(s) as *const _);
         window.make_current();
         window.set_cursor_pos_polling(true);
 
-        unsafe {
-            gl::ClearColor(1., 0.3, 0.3, 0.0);
-        }
+        gl::clear_color(1., 0.3, 0.3, 0.0);
 
         window.make_current();
+
+        let sh: Shader<u8> = Shader::new("default.vert", "default.frag");
 
         Self {
             glfw,
@@ -81,6 +85,59 @@ pub struct Shader<DataType>
 where
     DataType: Sized,
 {
-    data: DataType,
-    //TODO: Add shader type
+    data: Vec<DataType>,
+    program: gl::GLuint,
+}
+
+impl<DataType> Shader<DataType> {
+    pub fn new(vertex_path: &str, fragment_path: &str) -> Self {
+        let vertex_shader: gl::GLuint = shader_source(
+            SHADERS_PATH
+                .get_file(vertex_path)
+                .expect(format!("Could not get file {}", vertex_path).as_str())
+                .contents(),
+            gl::GL_VERTEX_SHADER,
+        );
+        let fragment_shader: gl::GLuint = shader_source(
+            SHADERS_PATH
+                .get_file(fragment_path)
+                .expect(format!("Could not get file {}", fragment_path).as_str())
+                .contents(),
+            gl::GL_FRAGMENT_SHADER,
+        );
+        let program = gl::create_program();
+        gl::attach_shader(program, vertex_shader);
+        gl::attach_shader(program, fragment_shader);
+        gl::link_program(program);
+        if gl::get_programiv(program, gl::GL_LINK_STATUS) == 0 {
+            panic!("Could not link shader."); //TODO: add error catching
+        };
+        gl::detach_shader(program, vertex_shader);
+        gl::detach_shader(program, fragment_shader);
+        gl::delete_shader(vertex_shader);
+        gl::delete_shader(fragment_shader);
+        Self {
+            data: vec![],
+            program,
+        }
+    }
+}
+
+fn shader_source(source: &[u8], kind: gl::GLenum) -> gl::GLuint {
+    let id = gl::create_shader(kind);
+    gl::shader_source(id, &source);
+    gl::compile_shader(id);
+
+    if gl::get_shaderiv(id, gl::GL_COMPILE_STATUS) == 0 {
+        panic!(
+            "{}",
+            format!(
+                "Could not compile shader with reason {}\nSRC:\n{:?}",
+                gl::get_shader_info_log(id, gl::get_shaderiv(id, gl::GL_INFO_LOG_LENGTH))
+                    .expect("Could not get error"),
+                source
+            )
+        );
+    };
+    id
 }

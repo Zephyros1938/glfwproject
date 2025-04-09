@@ -7,6 +7,7 @@ pub struct Window {
     glfw: Glfw,
     window: PWindow,
     event_polls: glfw::GlfwReceiver<(f64, WindowEvent)>,
+    pub init_params: (String, u32, u32),
 }
 
 pub trait WindowTrait {
@@ -72,6 +73,7 @@ impl WindowTrait for Window {
             glfw,
             window,
             event_polls: events,
+            init_params: (title.to_string(), width, height),
         }
     }
 }

@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bytemuck = "1"
 glfw = "0.59.0"
 include_dir = "*"
+log = "0.4.27"
+log4rs = "1.3.0"
 opengles = "0.1.2"

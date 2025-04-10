@@ -45,9 +45,10 @@ impl<DataType: utility::GL_DataType + 'static> shader_program<DataType> {
                 datasize,
                 data[0].value(),
                 gl::FALSE,
-                datasize * (size_of::<DataType>() as i32),
-                data.as_mut_ptr() as *const std::ffi::c_void,
+                0,
+                std::ptr::null(),
             );
+            gl::EnableVertexAttribArray(position);
         }
     }
 
@@ -57,7 +58,7 @@ impl<DataType: utility::GL_DataType + 'static> shader_program<DataType> {
 
     pub fn draw(&self) {
         unsafe {
-            gl::DrawArrays(self.drawmode.value(), 0, 9);
+            gl::DrawArrays(self.drawmode.value(), 0, 3);
         };
     }
 

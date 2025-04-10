@@ -10,13 +10,3 @@ pub fn log_examples() {
         "This is a generic log! macro message at the Info level."
     );
 }
-
-macro_rules! impl_T {
-    (for $($t:ty),+) => {
-        $(impl T for $t {
-            fn double(&self) -> u32 {
-                self.x * 2
-            }
-        })*
-    }
-}

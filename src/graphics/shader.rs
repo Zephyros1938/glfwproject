@@ -11,7 +11,6 @@ mod uniform_map;
 //      https://github.com/Zephyros1938/ConsoleApp1/blob/main/Assets/Scripts/Shader.cs
 
 static SHADERS_PATH: include_dir::Dir = include_dir::include_dir!("shaders");
-pub type ShaderAnyData = dyn std::any::Any + 'static;
 
 pub struct Shader<DataType>
 where
@@ -101,7 +100,8 @@ where
             "Entering Shader::get_attrib_location for attribute: {}",
             name
         );
-        let location = gl::GetAttribLocation(self.program, name.as_ptr() as *const i8);
+        let cname = std::ffi::CString::new(name).unwrap();
+        let location = gl::GetAttribLocation(self.program, cname.as_ptr());
         debug!(
             "Attribute {} location for program {} is: {}",
             name, self.program, location

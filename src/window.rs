@@ -1,7 +1,5 @@
-use crate::graphics::{shader::Shader, shader_program::shader_program, utility::*};
+use crate::graphics::{shader_program::shader_program, utility::*};
 use glfw::*;
-use opengles::glesv2 as gles;
-use std::time::Duration;
 
 pub struct Window {
     glfw: Glfw,
@@ -20,7 +18,8 @@ pub trait WindowTrait {
 impl WindowTrait for Window {
     fn mainloop_logic(&mut self) {
         unsafe {
-            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::ClearColor(0., 0., 0., 1.);
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
         }
     }
 
@@ -46,7 +45,7 @@ impl WindowTrait for Window {
             "aPosition".to_string(),
             0,
             3,
-            &mut [0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0],
+            &mut [-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0],
         );
         while !self.window.should_close() {
             self.event_logic();
@@ -57,6 +56,9 @@ impl WindowTrait for Window {
             sh.bind();
             sh.useshader();
             sh.draw();
+            unsafe {
+                crate::graphics::utility::check_gl_error("post-draw");
+            }
 
             self.window.swap_buffers();
 
@@ -75,9 +77,11 @@ impl WindowTrait for Window {
         //g::load_with(|s| window.get_proc_address(s) as *const _);
         window.make_current();
         window.set_cursor_pos_polling(true);
-        gl::load_with(|s| glfw.get_proc_address_raw(s));
+        gl::load_with(|s| window.get_proc_address(s) as *const _);
 
-        gles::clear_color(0., 0., 0., 0.0);
+        unsafe {
+            gl::ClearColor(0., 0., 0., 1.0);
+        }
 
         window.make_current();
 

@@ -6,9 +6,9 @@ use log::{debug, error, info, log, trace, warn};
 
 pub fn main() {
     log4rs::init_file("log4rs.yml", Default::default()).unwrap();
-    debug!("log4rs configured!");
+    info!("log4rs configured!");
 
-    let mut w = Window::new("SDL2 OpenGL Test", 800, 600);
+    let mut w = Window::new("OpenGL Test", 800, 600);
     info!(
         "Window created with params: {0} {1}x{2}",
         w.init_params.0, w.init_params.1, w.init_params.2

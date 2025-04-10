@@ -1,6 +1,6 @@
-use crate::graphics::shader::Shader;
+use crate::graphics::{shader::Shader, shader_program::shader_program, utility::*};
 use glfw::*;
-use opengles::glesv2 as gl;
+use opengles::glesv2 as gles;
 use std::time::Duration;
 
 pub struct Window {
@@ -19,7 +19,9 @@ pub trait WindowTrait {
 
 impl WindowTrait for Window {
     fn mainloop_logic(&mut self) {
-        unsafe {}
+        unsafe {
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+        }
     }
 
     fn event_logic(&mut self) {
@@ -38,16 +40,27 @@ impl WindowTrait for Window {
     }
 
     fn run(&mut self) {
+        let mut sh: shader_program<f32> =
+            shader_program::new("default.vert", "default.frag", GL_DrawMode::TRIANGLES);
+        sh.set_array(
+            "aPosition".to_string(),
+            0,
+            3,
+            &mut [0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0],
+        );
         while !self.window.should_close() {
             self.event_logic();
             self.mainloop_logic();
 
             // The rest of the game loop goes here...
             //
+            sh.bind();
+            sh.useshader();
+            sh.draw();
 
             self.window.swap_buffers();
 
-            std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+            //std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
         }
     }
 
@@ -59,15 +72,14 @@ impl WindowTrait for Window {
             .expect("Could not create window.");
 
         window.set_key_polling(true);
-        //gl::load_with(|s| window.get_proc_address(s) as *const _);
+        //g::load_with(|s| window.get_proc_address(s) as *const _);
         window.make_current();
         window.set_cursor_pos_polling(true);
+        gl::load_with(|s| glfw.get_proc_address_raw(s));
 
-        gl::clear_color(1., 0.3, 0.3, 0.0);
+        gles::clear_color(0., 0., 0., 0.0);
 
         window.make_current();
-
-        let sh: Shader<u8> = Shader::new("default.vert", "default.frag");
 
         Self {
             glfw,

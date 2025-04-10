@@ -56,9 +56,8 @@ impl WindowTrait for Window {
             sh.bind();
             sh.useshader();
             sh.draw();
-            unsafe {
-                crate::graphics::utility::check_gl_error("post-draw");
-            }
+
+            crate::graphics::utility::check_gl_error("post-draw");
 
             self.window.swap_buffers();
 
@@ -77,13 +76,13 @@ impl WindowTrait for Window {
         //g::load_with(|s| window.get_proc_address(s) as *const _);
         window.make_current();
         window.set_cursor_pos_polling(true);
-        gl::load_with(|s| window.get_proc_address(s) as *const _);
+        gl::load_with(|s| glfw.get_proc_address_raw(s) as *const _);
 
         unsafe {
             gl::ClearColor(0., 0., 0., 1.0);
         }
 
-        window.make_current();
+        //window.make_current();
 
         Self {
             glfw,

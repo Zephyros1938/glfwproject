@@ -1,8 +1,7 @@
-use std::{any::Any, collections::HashMap, f32, ops::Index};
-
 use crate::graphics::{shader::*, utility};
 use gl;
 use log::{debug, error, info, log, trace, warn};
+use std::collections::HashMap;
 
 mod shader_program_cache;
 
@@ -16,7 +15,7 @@ pub struct shader_program<DataType: utility::GL_DataType + 'static> {
 impl<DataType: utility::GL_DataType + 'static> shader_program<DataType> {
     pub fn new(vertex_path: &str, fragment_path: &str, drawmode: utility::GL_DrawMode) -> Self {
         Self {
-            shader: unsafe { Shader::new(vertex_path, fragment_path) },
+            shader: Shader::new(vertex_path, fragment_path),
             vao: utility::gen_vertex_array(),
             drawmode,
             buffers: HashMap::new(),
@@ -63,8 +62,6 @@ impl<DataType: utility::GL_DataType + 'static> shader_program<DataType> {
     }
 
     pub fn useshader(&self) {
-        unsafe {
-            self.shader.useprogram();
-        }
+        self.shader.useprogram();
     }
 }

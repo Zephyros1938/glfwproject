@@ -9,6 +9,7 @@ use crate::graphics::{shader_program::ShaderProgram, shader_program_map::ShaderP
 use crate::math::math3d::camera::Camera;
 use crate::math::math3d::eye::EyeBase;
 use crate::math::*;
+use crate::util::gl::enums::DrawMode;
 use crate::window::WindowBase;
 
 use super::frame_event_args::FrameEventArgs;
@@ -33,7 +34,6 @@ impl GameWindow {
 
     fn on_render_frame(&mut self, _e: FrameEventArgs) {
         unsafe {
-            gl::ClearColor(0., 0., 0., 1.);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT | gl::STENCIL_BUFFER_BIT);
         }
         for (_, _shader) in self.shader_list.get_all_1() {
@@ -44,8 +44,8 @@ impl GameWindow {
     }
 
     /// Polled event handling, such as a singular keypress, framebuffer resize, or click.
-    /// 
-    /// 
+    ///
+    ///
     fn event_logic(&mut self, _e: FrameEventArgs) {
         self.window.glfw.poll_events();
         for (_, event) in glfw::flush_messages(&self.event_polls) {
@@ -70,6 +70,9 @@ impl GameWindow {
                     Key::F11 => {
                         self.window.maximize();
                     }
+                    Key::Num1 => self.shader_list["test.main"].set_drawmode(DrawMode::TRIANGLES),
+                    Key::Num2 => self.shader_list["test.main"].set_drawmode(DrawMode::LINES),
+                    Key::Num3 => self.shader_list["test.main"].set_drawmode(DrawMode::POINTS),
                     _ => {}
                 },
                 _ => (),
@@ -128,8 +131,13 @@ impl WindowBase for GameWindow {
         gl::load_with(|s| glfw.get_proc_address_raw(s) as *const _);
 
         unsafe {
-            gl::ClearColor(0., 0., 0., 0.0);
+            gl::ClearColor(0., 0., 0., 1.0);
             gl::Enable(gl::DEPTH_TEST);
+            gl::DepthFunc(gl::LESS);
+            gl::Enable(gl::BLEND);
+            gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+            gl::Enable(gl::CULL_FACE);
+            gl::Enable(gl::TEXTURE_2D);
         }
 
         let delta_time = super::delta_time::DeltaTime::new(glfw.get_time());
@@ -185,19 +193,26 @@ impl WindowBase for GameWindow {
         sh.uniform_matrix4x4("projection".to_string(), &self.camera.eye.projection);
         crate::util::gl::funcs::check_gl_error("projection-uniform");
 
+        // Define the positions for each triangle of the cube's 6 faces.
+        // Each face is composed of 2 triangles (6 vertices).
+        // The cube is centered at the origin with sides of length 1.
         sh.set_vertex(
             "aPosition".to_string(),
             0,
             3,
-            &mut [-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0],
+            &mut crate::util::gl::example_shader_values::cube::VERTICES_CW.clone(),
         );
 
+        // Define colors for each vertex. Here each face is given a unique color.
+        // Notice that each color is repeated 6 times for the six vertices
+        // corresponding to that face.
         sh.set_array(
             "aColor".to_string(),
             1,
             3,
-            &mut [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+            &mut crate::util::gl::example_shader_values::cube::COLORS.clone(),
         );
+
         self.shader_list.add("test.main".to_string(), true, sh);
 
         let windowsize = self.window.get_size();

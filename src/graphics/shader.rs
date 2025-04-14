@@ -12,6 +12,7 @@ mod uniform_map;
 //      https://github.com/angular-rust/opengles-tutorial/blob/main/lesson-02/src/main.rs
 //      https://github.com/Zephyros1938/ConsoleApp1/blob/main/Assets/Scripts/Shader.cs
 //      https://nercury.github.io/rust/opengl/tutorial/2018/02/10/opengl-in-rust-from-scratch-03-compiling-shaders.html
+//      https://github.com/Z-1938Studios/VoxelGame1/blob/main/Assets/Scripts/Game.cs
 
 #[derive(Clone)]
 pub struct Shader {

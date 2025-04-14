@@ -124,4 +124,7 @@ impl ShaderProgram {
             .unwrap();
         self.unbind();
     }
+    pub fn set_drawmode(&mut self, drawmode: DrawMode) {
+        self.drawmode = drawmode;
+    }
 }

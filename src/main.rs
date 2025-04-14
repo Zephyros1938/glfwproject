@@ -1,4 +1,6 @@
 #![feature(never_type)]
+#![feature(trait_alias)]
+#![feature(type_alias_impl_trait)]
 mod game;
 mod graphics;
 mod math;

@@ -2,19 +2,22 @@ use std::collections::HashMap;
 
 use log::debug;
 
-use super::shader_program::ShaderProgram;
+use super::{ShaderProgram, ShaderProgramVertex};
 
-pub struct ShaderProgramMap {
-    shaders: HashMap<String, (bool, ShaderProgram)>,
+pub struct ShaderProgramMap<T>
+where
+    T: ShaderProgram,
+{
+    shaders: HashMap<String, (bool, T)>,
 }
 
-impl ShaderProgramMap {
+impl<T: ShaderProgram> ShaderProgramMap<T> {
     pub fn new() -> Self {
         Self {
             shaders: HashMap::new(),
         }
     }
-    pub fn add(&mut self, name: String, enabled: bool, shader: ShaderProgram) {
+    pub fn add(&mut self, name: String, enabled: bool, shader: T) {
         self.shaders.insert(name, (enabled, shader));
     }
     pub fn rem(&mut self, name: &str) {
@@ -39,27 +42,27 @@ impl ShaderProgramMap {
         }
     }
 
-    pub fn get_shader(&self, name: &str) -> Option<&ShaderProgram> {
+    pub fn get_shader(&self, name: &str) -> Option<&T> {
         self.shaders.get(name).map(|(_, shader)| shader)
     }
-    pub fn get_shader_mut(&mut self, name: &str) -> Option<&mut ShaderProgram> {
+    pub fn get_shader_mut(&mut self, name: &str) -> Option<&mut T> {
         self.shaders.get_mut(name).map(|(_, shader)| shader)
     }
-    pub fn get_all_1(&self) -> Vec<(String, &ShaderProgram)> {
+    pub fn get_all_1(&self) -> Vec<(String, &T)> {
         self.shaders
             .iter()
             .filter(|(_, (enabled, _))| *enabled)
             .map(|(name, (_, shader))| (name.clone(), shader))
             .collect()
     }
-    pub fn get_all_0(&self) -> Vec<(String, &ShaderProgram)> {
+    pub fn get_all_0(&self) -> Vec<(String, &T)> {
         self.shaders
             .iter()
             .filter(|(_, (enabled, _))| !*enabled)
             .map(|(name, (_, shader))| (name.clone(), shader))
             .collect()
     }
-    pub fn get_all(&self) -> Vec<(String, bool, &ShaderProgram)> {
+    pub fn get_all(&self) -> Vec<(String, bool, &T)> {
         self.shaders
             .iter()
             .map(|(name, (enabled, shader))| (name.clone(), *enabled, shader))
@@ -67,7 +70,7 @@ impl ShaderProgramMap {
     }
 }
 
-impl Default for ShaderProgramMap {
+impl<T: ShaderProgram> Default for ShaderProgramMap<T> {
     fn default() -> Self {
         Self {
             shaders: HashMap::new(),
@@ -75,16 +78,16 @@ impl Default for ShaderProgramMap {
     }
 }
 
-impl std::ops::Index<&str> for ShaderProgramMap {
-    type Output = ShaderProgram;
+impl<T: ShaderProgram> std::ops::Index<&str> for ShaderProgramMap<T> {
+    type Output = T;
 
-    fn index(&self, index: &str) -> &ShaderProgram {
+    fn index(&self, index: &str) -> &T {
         self.get_shader(index).expect("Shader not found")
     }
 }
 
-impl std::ops::IndexMut<&str> for ShaderProgramMap {
-    fn index_mut(&mut self, index: &str) -> &mut ShaderProgram {
+impl<T: ShaderProgram> std::ops::IndexMut<&str> for ShaderProgramMap<T> {
+    fn index_mut(&mut self, index: &str) -> &mut T {
         &mut self.shaders.get_mut(index).expect("Shader not found").1
     }
 }

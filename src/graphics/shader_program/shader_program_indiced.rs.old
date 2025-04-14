@@ -1,0 +1,158 @@
+use std::collections::HashMap;
+
+use log::debug;
+
+use crate::{
+    graphics::shader::Shader,
+    util::{
+        gl::{
+            enums::{DataType, DrawMode},
+            funcs::gen_vertex_array,
+        },
+        mesh::raw::Mesh,
+    },
+};
+
+#[derive(Clone)]
+pub struct ShaderProgramIndiced {
+    shader: Shader,
+    vao: u32,
+    ebo: u32,
+    drawmode: DrawMode,
+    buffers: HashMap<String, (u32, i32)>,
+    indice_len: i32,
+}
+
+impl super::ShaderProgram for ShaderProgramIndiced {}
+
+impl ShaderProgramIndiced {
+    pub fn set_indices<T: Sized + Clone + PartialEq + std::fmt::Debug>(
+        &mut self,
+        mesh: crate::util::mesh::raw::Mesh<T>,
+    ) {
+        self.bind();
+        let vbo = {
+            let mut buf = 0;
+            unsafe {
+                gl::GenBuffers(1, &mut buf);
+            };
+            buf
+        };
+        unsafe {
+            let indices = mesh.get_indices();
+            let vertices = mesh.get_data();
+            println!("{:#?}", indices);
+            println!("{:#?}", vertices);
+            gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (vertices.len() * size_of::<T>()) as isize,
+                vertices.as_ptr() as *const std::ffi::c_void,
+                gl::STATIC_DRAW,
+            );
+            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ebo);
+            gl::BufferData(
+                gl::ELEMENT_ARRAY_BUFFER,
+                (indices.len() * size_of::<u32>()) as isize,
+                indices.as_ptr() as *const std::ffi::c_void,
+                gl::STATIC_DRAW,
+            );
+            self.indice_len = indices.len() as i32;
+        };
+        self.unbind();
+    }
+    pub fn new(vertex_path: &str, fragment_path: &str, drawmode: DrawMode) -> Self
+    where
+        Self: Sized,
+    {
+        Self {
+            shader: Shader::new(vertex_path, fragment_path),
+            vao: gen_vertex_array(),
+            ebo: {
+                let mut buf = 0;
+                unsafe {
+                    gl::GenBuffers(1, &mut buf);
+                };
+                buf
+            },
+            drawmode,
+            buffers: HashMap::new(),
+            indice_len: 0,
+        }
+    }
+
+    pub fn bind(&self) {
+        unsafe { gl::BindVertexArray(self.vao) };
+    }
+
+    pub fn unbind(&self) {
+        unsafe {
+            gl::BindVertexArray(0);
+        }
+    }
+
+    pub fn draw(&self) {
+        unsafe {
+            gl::DrawElements(
+                self.drawmode.value(),
+                self.indice_len,
+                gl::UNSIGNED_INT,
+                std::ptr::null(),
+            )
+        }
+    }
+
+    pub fn useprogram(&self) {
+        self.shader.useprogram();
+    }
+
+    pub fn dispose(&mut self) {
+        let vao_id = self.vao;
+        debug!(
+            "Entering ShaderProgram::dispose for ShaderProgram {}",
+            self.vao
+        );
+        unsafe {
+            for (name, (id, _)) in &self.buffers {
+                debug!("Deleting buffer {} ({})", name, id);
+                gl::DeleteBuffers(1, id);
+            }
+            debug!("Deleting VAO {}", &self.vao);
+            gl::DeleteVertexArrays(1, &self.vao);
+        }
+        self.shader.dispose();
+        self.unbind();
+        debug!(
+            "ShaderProgram::dispose completed successfully for ShaderProgram {}",
+            vao_id
+        );
+    }
+
+    pub fn set_drawmode(&mut self, drawmode: DrawMode) {
+        self.drawmode = drawmode;
+    }
+
+    pub fn set_ebo_attrib(&mut self, position: u32, datasize: i32, data_type: impl DataType) {
+        unsafe {
+            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ebo);
+            gl::VertexAttribPointer(
+                position,
+                datasize,
+                data_type.value(),
+                gl::FALSE,
+                6,
+                std::ptr::null(),
+            );
+            gl::EnableVertexAttribArray(position);
+        }
+    }
+
+    pub fn uniform_matrix4x4(&self, name: String, data: &crate::math::matrix4x4::Matrix4x4) {
+        self.bind();
+        self.useprogram();
+        self.shader
+            .set_uniform_matrix4x4(name.as_str(), data)
+            .unwrap();
+        self.unbind();
+    }
+}

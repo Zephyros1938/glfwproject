@@ -3,7 +3,7 @@ use crate::util::gl::funcs::*;
 use log::{debug, error, info};
 use std::ffi::CString;
 
-mod errors;
+pub mod errors;
 mod shader_cache;
 mod uniform_map;
 
@@ -121,6 +121,9 @@ impl Shader {
         name: &str,
         data: &Matrix4x4,
     ) -> Result<(), errors::UniformError> {
+        // Ensure the shader program is active.
+        self.useprogram();
+
         let c_name = CString::new(name)?;
         let location = unsafe { gl::GetUniformLocation(self.program, c_name.as_ptr()) };
 
@@ -131,8 +134,9 @@ impl Shader {
             });
         }
 
+        // Set the matrix uniform. Use gl::FALSE if your matrix is column-major.
         unsafe {
-            gl::UniformMatrix4fv(location, 1, gl::TRUE, data.as_ptr());
+            gl::UniformMatrix4fv(location, 1, gl::FALSE, data.as_ptr());
         }
 
         Ok(())

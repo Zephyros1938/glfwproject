@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::util::enums::Number;
+
 pub struct MeshRaw<T: 'static + std::cmp::Eq + std::hash::Hash + Clone> {
     data: &'static [T],
 }
@@ -34,7 +36,7 @@ pub struct Mesh<T> {
     indices: Vec<u32>,
 }
 
-impl<T: 'static + Eq + std::hash::Hash + Clone> Mesh<T> {
+impl<T: PartialEq + Clone> Mesh<T> {
     /// Constructs a new Mesh from the given array.
     /// It collects unique vertices and builds an index map.
     pub fn new(data: &[T]) -> Self {

@@ -6,8 +6,32 @@ use gl;
 use log::debug;
 use std::collections::HashMap;
 
+pub mod shader_program_indiced;
+pub mod shader_program_map;
+
+pub use shader_program_indiced::ShaderProgramIndiced;
+pub use shader_program_map::ShaderProgramMap;
+
+trait ShaderProgramBase {
+    fn new(vertex_path: &str, fragment_path: &str, drawmode: DrawMode) -> Self
+    where
+        Self: Sized;
+    fn bind(&self);
+    fn unbind(&self) {
+        unsafe {
+            gl::BindVertexArray(0);
+        }
+    }
+    fn draw(&self);
+    fn useprogram(&self);
+    fn dispose(&mut self);
+    fn set_drawmode(&mut self, drawmode: DrawMode);
+}
+
+pub trait ShaderProgram {}
+
 #[derive(Clone)]
-pub struct ShaderProgram {
+pub struct ShaderProgramVertex {
     shader: Shader,
     vao: u32,
     drawmode: DrawMode,
@@ -15,7 +39,7 @@ pub struct ShaderProgram {
     vertex_len: i32,
 }
 
-impl ShaderProgram {
+impl ShaderProgramVertex {
     pub fn new(vertex_path: &str, fragment_path: &str, drawmode: DrawMode) -> Self {
         debug!(
             "Entering ShaderProgram::new with vertex_path: {} and fragment_path: {}",
@@ -128,3 +152,5 @@ impl ShaderProgram {
         self.drawmode = drawmode;
     }
 }
+
+impl ShaderProgram for ShaderProgramVertex {}

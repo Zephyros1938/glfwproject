@@ -1,22 +1,21 @@
-use glfw::{
-    Action, Context, Cursor, Glfw, GlfwReceiver, Key, PWindow, WindowEvent, fail_on_errors,
-};
-use log::{debug, info};
+use std::ptr;
 
-use crate::util::game::event::Event;
-
-use crate::graphics::{shader_program::ShaderProgram, shader_program_map::ShaderProgramMap};
+use crate::graphics::shader_program::ShaderProgramIndiced;
+use crate::graphics::shader_program::ShaderProgramMap;
 use crate::math::math3d::camera::Camera;
 use crate::math::math3d::eye::EyeBase;
 use crate::math::*;
-use crate::util::gl::enums::DrawMode;
+use crate::util::game::event::Event;
+use crate::util::mesh::raw::Mesh;
 use crate::window::WindowBase;
+use glfw::{Action, Context, Glfw, GlfwReceiver, Key, PWindow, WindowEvent, fail_on_errors};
+use log::{debug, info};
 
 use super::frame_event_args::FrameEventArgs;
 
 pub struct GameWindow {
     camera: Camera,
-    shader_list: ShaderProgramMap,
+    shader_list: ShaderProgramMap<ShaderProgramIndiced>,
     _glfw: Glfw,
     window: PWindow,
     event_polls: GlfwReceiver<(f64, WindowEvent)>,
@@ -27,8 +26,11 @@ pub struct GameWindow {
 
 impl GameWindow {
     fn on_update_frame(&mut self, _e: FrameEventArgs) {
-        self.shader_list["test.main"]
-            .uniform_matrix4x4("view".to_string(), &self.camera.get_view());
+        if let Err(e) =
+            self.shader_list["test.main"].set_uniform_matrix4x4("view", &self.camera.get_view())
+        {
+            eprintln!("Error setting uniform: {}", e);
+        }
         crate::util::gl::funcs::check_gl_error("view-uniform");
     }
 
@@ -37,8 +39,7 @@ impl GameWindow {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT | gl::STENCIL_BUFFER_BIT);
         }
         for (_, _shader) in self.shader_list.get_all_1() {
-            _shader.bind();
-            _shader.useshader();
+            _shader.useprogram();
             _shader.draw();
         }
     }
@@ -53,8 +54,12 @@ impl GameWindow {
                 unsafe {
                     gl::Viewport(0, 0, x, y);
                     self.camera.set_aspect_ratio(x as f32 / y as f32);
-                    self.shader_list["test.main"]
-                        .uniform_matrix4x4("projection".to_string(), &self.camera.eye.projection);
+
+                    if let Err(e) = self.shader_list["test.main"]
+                        .set_uniform_matrix4x4("projection", &self.camera.eye.projection)
+                    {
+                        eprintln!("Error setting uniform: {}", e);
+                    }
                 }
             }
             match event {
@@ -70,9 +75,9 @@ impl GameWindow {
                     Key::F11 => {
                         self.window.maximize();
                     }
-                    Key::Num1 => self.shader_list["test.main"].set_drawmode(DrawMode::TRIANGLES),
-                    Key::Num2 => self.shader_list["test.main"].set_drawmode(DrawMode::LINES),
-                    Key::Num3 => self.shader_list["test.main"].set_drawmode(DrawMode::POINTS),
+                    // Key::Num1 => self.shader_list["test.main"].set_drawmode(DrawMode::TRIANGLES),
+                    // Key::Num2 => self.shader_list["test.main"].set_drawmode(DrawMode::LINES),
+                    // Key::Num3 => self.shader_list["test.main"].set_drawmode(DrawMode::POINTS),
                     _ => {}
                 },
                 _ => (),
@@ -136,7 +141,7 @@ impl WindowBase for GameWindow {
             gl::DepthFunc(gl::LESS);
             gl::Enable(gl::BLEND);
             gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
-            gl::Enable(gl::CULL_FACE);
+            // gl::Enable(gl::CULL_FACE);
             gl::Enable(gl::TEXTURE_2D);
         }
 
@@ -179,39 +184,65 @@ impl WindowBase for GameWindow {
     }
 
     fn pre_load(&mut self) {
-        let mut sh: ShaderProgram = ShaderProgram::new(
-            "shaders/default.vert",
-            "shaders/default.frag",
-            crate::util::gl::enums::DrawMode::TRIANGLES,
-        );
+        let mut sh = ShaderProgramIndiced::builder("shaders/default.vert", "shaders/default.frag")
+            .add_attribute(
+                0,                             // Attribute location for position
+                3,                             // Number of components (x, y, z)
+                gl::FLOAT,                     // Type: float
+                gl::FALSE,                     // Not normalized
+                (6 * size_of::<f32>()) as i32, // Stride: total size of one vertex (position + color)
+                ptr::null(),                   // Offset: position starts at the beginning
+            )
+            .add_attribute(
+                1,                                  // Attribute location for color
+                3,                                  // Number of components (r, g, b)
+                gl::FLOAT,                          // Type: float
+                gl::FALSE,                          // Not normalized
+                (6 * size_of::<f32>()) as i32,      // Stride: total size of one vertex
+                (3 * size_of::<f32>()) as *const _, // Offset: color data starts after the first three floats (position)
+            )
+            .drawmode(gl::TRIANGLES)
+            .build();
+        let mesh = Mesh::new(&[
+            // Each vertex: [pos.x, pos.y, pos.z,  r, g, b]
+            [-0.5f32, -0.5f32, 0.0f32, 1.0, 0.0, 0.0], // Vertex 1: Red
+            [0.5f32, -0.5f32, 0.0f32, 0.0, 1.0, 0.0],  // Vertex 2: Green
+            [0.0f32, 0.5f32, 0.0f32, 0.0, 0.0, 1.0],   // Vertex 3: Blue
+        ]);
+
+        sh.set_indices(mesh);
+
         let model_matrix =
             matrix4x4::Matrix4x4::create_rotation_x(mathhelper::degrees_to_radians_f32(0f32));
-        sh.uniform_matrix4x4("model".to_string(), &model_matrix);
-        crate::util::gl::funcs::check_gl_error("model-uniform");
-        sh.uniform_matrix4x4("view".to_string(), &self.camera.get_view());
-        crate::util::gl::funcs::check_gl_error("view-uniform");
-        sh.uniform_matrix4x4("projection".to_string(), &self.camera.eye.projection);
-        crate::util::gl::funcs::check_gl_error("projection-uniform");
+        if let Err(e) = sh.set_uniform_matrix4x4("model", &model_matrix) {
+            eprintln!("Error setting uniform: {}", e);
+        }
+        if let Err(e) = sh.set_uniform_matrix4x4("view", &self.camera.get_view()) {
+            eprintln!("Error setting uniform: {}", e);
+        }
+        if let Err(e) = sh.set_uniform_matrix4x4("projection", &self.camera.eye.projection) {
+            eprintln!("Error setting uniform: {}", e);
+        }
 
         // Define the positions for each triangle of the cube's 6 faces.
         // Each face is composed of 2 triangles (6 vertices).
         // The cube is centered at the origin with sides of length 1.
-        sh.set_vertex(
-            "aPosition".to_string(),
-            0,
-            3,
-            &mut crate::util::gl::example_shader_values::cube::VERTICES_CW.clone(),
-        );
+        // sh.set_vertex(
+        //     "aPosition".to_string(),
+        //     0,
+        //     3,
+        //     &mut crate::util::gl::example_shader_values::cube::VERTICES_CW.clone(),
+        // );
 
         // Define colors for each vertex. Here each face is given a unique color.
         // Notice that each color is repeated 6 times for the six vertices
         // corresponding to that face.
-        sh.set_array(
-            "aColor".to_string(),
-            1,
-            3,
-            &mut crate::util::gl::example_shader_values::cube::COLORS.clone(),
-        );
+        // sh.set_array(
+        //     "aColor".to_string(),
+        //     1,
+        //     3,
+        //     &mut crate::util::gl::example_shader_values::cube::COLORS.clone(),
+        // );
 
         self.shader_list.add("test.main".to_string(), true, sh);
 
@@ -229,7 +260,7 @@ impl WindowBase for GameWindow {
     fn unload(&mut self) {
         for (name, enabled, shader) in self.shader_list.get_all() {
             debug!("Unloading shader {} with enabled status {}", name, enabled);
-            shader.clone().dispose();
+            // shader.clone().dispose();
         }
     }
 }

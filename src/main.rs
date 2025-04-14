@@ -1,18 +1,18 @@
+#![feature(never_type)]
+mod game;
 mod graphics;
+mod math;
+mod util;
 mod window;
-use window::{Window, WindowTrait};
-mod utility;
-use log::{debug, error, info, log, trace, warn};
+use game::game_window::GameWindow;
+use log::info;
+use window::WindowBase;
 
 pub fn main() {
     log4rs::init_file("log4rs.yml", Default::default()).unwrap();
     info!("log4rs configured!");
 
-    let mut w = Window::new("OpenGL Test", 800, 600);
-    info!(
-        "Window created with params: {0} {1}x{2}",
-        w.init_params.0, w.init_params.1, w.init_params.2
-    );
+    let mut w = GameWindow::new("OpenGL Test", 800, 600);
     w.run();
     info!("Program closed!");
 }

@@ -78,8 +78,6 @@ impl UniformMap {
     }
 
     /// Clears all uniforms from the map.
-    ///
-    /// Useful for resetting the map to an empty state.
     pub fn clear(&mut self) {
         debug!("Clearing all uniforms");
         self.uniforms.clear();

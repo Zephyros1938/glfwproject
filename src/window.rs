@@ -1,28 +1,62 @@
-use crate::graphics::{shader_program::shader_program, utility::*};
 use glfw::*;
+use log::info;
 
 pub struct Window {
-    glfw: Glfw,
-    window: PWindow,
-    event_polls: glfw::GlfwReceiver<(f64, WindowEvent)>,
+    pub glfw: Glfw,
+    pub window: PWindow,
+    pub event_polls: glfw::GlfwReceiver<(f64, WindowEvent)>,
     pub init_params: (String, u32, u32),
 }
 
-pub trait WindowTrait {
+/// The base trait for the window.
+pub trait WindowBase {
+    /// Initializes the window with the given title and dimensions.
+    ///
+    /// **THIS SHOULD NEVER CREATE/STORE SHADERS**
+    ///
+    /// Shaders should be created/stored during the `WindowBase::pre_load` function.
     fn new(title: &str, width: u32, height: u32) -> Self;
-    fn mainloop_logic(&mut self);
-    fn event_logic(&mut self);
-    fn run(&mut self);
+    /// Called every frame to update the window.
+    ///
+    /// **THIS SHOULD NOT DEAL WITH THE RENDERING OF SHADERS**
+    ///
+    /// Shader rendering is done on the `WindowBase::on_render_frame` function.
+    fn on_update_frame(&mut self) {
+        crate::util::gl::funcs::check_gl_error("WindowBase::on_update_frame");
+    }
+    /// Called every frame to render the shaders.
+    fn on_render_frame(&mut self) {
+        crate::util::gl::funcs::check_gl_error("WindowBase::on_render_frame");
+    }
+    /// Called every frame to handle events.
+    ///
+    /// Events included are:
+    /// - Key Presses
+    /// - Mouse Movement
+    /// - Window Resizing
+    /// - Window Closing
+    fn event_logic(&mut self) {
+        crate::util::gl::funcs::check_gl_error("WindowBase::event_logic");
+    }
+    /// Called before the window is loaded.
+    fn pre_load(&mut self) {
+        crate::util::gl::funcs::check_gl_error("WindowBase::pre_load");
+    }
+    /// Called when the window is unloaded.
+    fn unload(&mut self) {
+        crate::util::gl::funcs::check_gl_error("WindowBase::unload");
+    }
+    /// Called to run the window.
+    fn run(&mut self) {}
 }
 
-impl WindowTrait for Window {
-    fn mainloop_logic(&mut self) {
+impl WindowBase for Window {
+    fn on_update_frame(&mut self) {
         unsafe {
             gl::ClearColor(0., 0., 0., 1.);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT | gl::STENCIL_BUFFER_BIT);
         }
     }
-
     fn event_logic(&mut self) {
         self.glfw.poll_events();
         for (_, event) in glfw::flush_messages(&self.event_polls) {
@@ -30,65 +64,52 @@ impl WindowTrait for Window {
                 glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
                     self.window.set_should_close(true)
                 }
-                glfw::WindowEvent::Key(k, _, a, m) => {
-                    println!("Key {:?} {:?} with mod {:?}", k, a, m);
-                }
                 _ => {}
             }
         }
     }
 
+    fn pre_load(&mut self) {}
+
     fn run(&mut self) {
-        let mut sh: shader_program<f32> =
-            shader_program::new("default.vert", "default.frag", GL_DrawMode::TRIANGLES);
-        sh.set_array(
-            "aPosition".to_string(),
-            0,
-            3,
-            &mut [-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0],
-        );
         while !self.window.should_close() {
             self.event_logic();
-            self.mainloop_logic();
+            self.on_update_frame();
+            self.on_render_frame();
 
-            // The rest of the game loop goes here...
-            //
-            sh.bind();
-            sh.useshader();
-            sh.draw();
-
-            crate::graphics::utility::check_gl_error("post-draw");
+            crate::util::gl::funcs::check_gl_error("post-draw");
 
             self.window.swap_buffers();
-
-            //std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
         }
     }
 
     fn new(title: &str, width: u32, height: u32) -> Self {
-        let mut glfw = glfw::init(glfw::fail_on_errors!()).unwrap();
+        {
+            info!(
+                "Window created with params: {0} {1}x{2}",
+                title, width, height
+            );
+            let mut glfw = glfw::init(glfw::fail_on_errors!()).unwrap();
 
-        let (mut window, events) = glfw
-            .create_window(width, height, title, glfw::WindowMode::Windowed)
-            .expect("Could not create window.");
+            let (mut window, events) = glfw
+                .create_window(width, height, title, glfw::WindowMode::Windowed)
+                .expect("Could not create window.");
 
-        window.set_key_polling(true);
-        //g::load_with(|s| window.get_proc_address(s) as *const _);
-        window.make_current();
-        window.set_cursor_pos_polling(true);
-        gl::load_with(|s| glfw.get_proc_address_raw(s) as *const _);
+            window.set_all_polling(true);
+            window.make_current();
+            gl::load_with(|s| glfw.get_proc_address_raw(s) as *const _);
 
-        unsafe {
-            gl::ClearColor(0., 0., 0., 1.0);
-        }
+            unsafe {
+                gl::ClearColor(0., 0., 0., 0.0);
+                gl::Enable(gl::DEPTH_TEST);
+            }
 
-        //window.make_current();
-
-        Self {
-            glfw,
-            window,
-            event_polls: events,
-            init_params: (title.to_string(), width, height),
+            Self {
+                glfw,
+                window,
+                event_polls: events,
+                init_params: (title.to_string(), width, height),
+            }
         }
     }
 }

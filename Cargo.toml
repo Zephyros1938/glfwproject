@@ -3,10 +3,14 @@ name = "glfwproject"
 version = "0.1.0"
 edition = "2024"
 build = true
+#![feature(never_type)]
 
 [dependencies]
 gl = "0.14.0"
 glfw = "0.59.0"
+glm = "0.2.3"
 include_dir = "*"
 log = "0.4.27"
 log4rs = "1.3.0"
+num-traits = "0.2.19"
+thiserror = "2.0.12"

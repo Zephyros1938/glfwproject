@@ -1,3 +1,5 @@
+use log::{debug, trace, warn};
+
 pub struct VertexArray {
     pub id: u32,
 }
@@ -30,6 +32,7 @@ impl VertexArray {
 impl Drop for VertexArray {
     fn drop(&mut self) {
         unsafe {
+            warn!("Dropping VAO {}", self.id);
             gl::DeleteVertexArrays(1, &self.id);
         }
     }

@@ -39,7 +39,6 @@ impl GameWindow {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT | gl::STENCIL_BUFFER_BIT);
         }
         for (_, _shader) in self.shader_list.get_all_1() {
-            _shader.useprogram();
             _shader.draw();
         }
     }
@@ -186,12 +185,12 @@ impl WindowBase for GameWindow {
     fn pre_load(&mut self) {
         let mut sh = ShaderProgramIndiced::builder("shaders/default.vert", "shaders/default.frag")
             .add_attribute(
-                0,                             // Attribute location for position
-                3,                             // Number of components (x, y, z)
-                gl::FLOAT,                     // Type: float
-                gl::FALSE,                     // Not normalized
+                0,                                  // Attribute location for position
+                3,                                  // Number of components (x, y, z)
+                gl::FLOAT,                          // Type: float
+                gl::FALSE,                          // Not normalized
                 (6 * size_of::<f32>()) as i32, // Stride: total size of one vertex (position + color)
-                ptr::null(),                   // Offset: position starts at the beginning
+                (0 * size_of::<f32>()) as *const _, // Offset: position starts at the beginning
             )
             .add_attribute(
                 1,                                  // Attribute location for color
@@ -201,16 +200,15 @@ impl WindowBase for GameWindow {
                 (6 * size_of::<f32>()) as i32,      // Stride: total size of one vertex
                 (3 * size_of::<f32>()) as *const _, // Offset: color data starts after the first three floats (position)
             )
-            .drawmode(gl::TRIANGLES)
             .build();
         let mesh = Mesh::new(&[
             // Each vertex: [pos.x, pos.y, pos.z,  r, g, b]
-            [-0.5f32, -0.5f32, 0.0f32, 1.0, 0.0, 0.0], // Vertex 1: Red
-            [0.5f32, -0.5f32, 0.0f32, 0.0, 1.0, 0.0],  // Vertex 2: Green
-            [0.0f32, 0.5f32, 0.0f32, 0.0, 0.0, 1.0],   // Vertex 3: Blue
+            -0.5f32, -0.5f32, 0.0f32, 1.0, 0.0, 0.0, // Vertex 1: Red
+            0.5f32, -0.5f32, 0.0f32, 0.0, 1.0, 0.0, // Vertex 2: Green
+            0.0f32, 0.5f32, 0.0f32, 0.0, 0.0, 1.0, // Vertex 3: Blue
         ]);
 
-        sh.set_indices(mesh);
+        sh.set_indices_mesh(mesh);
 
         let model_matrix =
             matrix4x4::Matrix4x4::create_rotation_x(mathhelper::degrees_to_radians_f32(0f32));

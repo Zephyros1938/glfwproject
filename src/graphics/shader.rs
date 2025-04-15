@@ -122,7 +122,6 @@ impl Shader {
         data: &Matrix4x4,
     ) -> Result<(), errors::UniformError> {
         // Ensure the shader program is active.
-        self.useprogram();
 
         let c_name = CString::new(name)?;
         let location = unsafe { gl::GetUniformLocation(self.program, c_name.as_ptr()) };

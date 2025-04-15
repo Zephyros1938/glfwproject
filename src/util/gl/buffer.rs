@@ -1,3 +1,5 @@
+use log::{trace, warn};
+
 pub struct Buffer {
     pub id: u32,
     pub target: u32,
@@ -38,6 +40,7 @@ impl Buffer {
 impl Drop for Buffer {
     fn drop(&mut self) {
         unsafe {
+            warn!("Dropping buffer {} : {}", self.id, self.target);
             gl::DeleteBuffers(1, &self.id);
         }
     }

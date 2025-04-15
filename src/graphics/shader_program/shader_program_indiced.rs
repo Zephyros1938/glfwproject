@@ -25,13 +25,17 @@ impl ShaderProgramIndiced {
     /// Uploads the mesh's vertex and index data to the GPU.
     /// Assumes that `mesh.get_data()` returns a slice of vertices and that
     /// `mesh.get_indices()` returns a slice of u32 indices.
-    pub fn set_indices<T: Clone + std::fmt::Debug + PartialEq>(
+    pub fn set_indices_mesh<T: Clone + std::fmt::Debug + PartialEq>(
         &mut self,
         mesh: crate::util::mesh::raw::Mesh<T>,
     ) {
         // Bind the VAO so that the new buffers get associated with it.
         unsafe {
             gl::BindVertexArray(self.vao);
+        }
+        let err = unsafe { gl::GetError() };
+        if err != gl::NO_ERROR {
+            eprintln!("OpenGL error after binding vao: {:#X}", err);
         }
 
         // Create and upload vertex data.
@@ -42,6 +46,10 @@ impl ShaderProgramIndiced {
             }
             buf
         };
+        let err = unsafe { gl::GetError() };
+        if err != gl::NO_ERROR {
+            eprintln!("OpenGL error after setting vbo: {:#X}", err);
+        }
         unsafe {
             let vertices = mesh.get_data();
             gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
@@ -51,6 +59,10 @@ impl ShaderProgramIndiced {
                 vertices.as_ptr() as *const c_void,
                 gl::STATIC_DRAW,
             );
+        }
+        let err = unsafe { gl::GetError() };
+        if err != gl::NO_ERROR {
+            eprintln!("OpenGL error after setting vertdata: {:#X}", err);
         }
 
         // Upload index data.
@@ -65,6 +77,10 @@ impl ShaderProgramIndiced {
             );
             // Update the indice_len field so the draw call knows how many indices to render.
             self.indice_len = indices.len() as u32;
+        }
+        let err = unsafe { gl::GetError() };
+        if err != gl::NO_ERROR {
+            eprintln!("OpenGL error after setting uniformdata: {:#X}", err);
         }
 
         // Unbind the VAO (optional).
@@ -102,8 +118,14 @@ impl ShaderProgramIndiced {
         name: &str,
         data: &crate::math::matrix4x4::Matrix4x4,
     ) -> Result<(), super::errors::UniformError> {
-        // Assuming Shader::set_uniform_matrix4x4 returns a Result<(), String>.
+        unsafe {
+            gl::BindVertexArray(self.vao);
+        }
+        self.useprogram();
         let result = self.shader.set_uniform_matrix4x4(name, data);
+        unsafe {
+            gl::BindVertexArray(0);
+        }
         let err = unsafe { gl::GetError() };
         if err != gl::NO_ERROR {
             eprintln!("OpenGL error after setting uniform: {:#X}", err);
@@ -191,7 +213,24 @@ impl ShaderProgramBuilder {
                     attr.stride,
                     attr.offset,
                 );
+                let err = gl::GetError();
+                if err != gl::NO_ERROR {
+                    eprintln!(
+                        "OpenGL error after setting attr: {:#X}\n\tID  :{}\n\tSIZE:{}\n\tTYPE:{}\n\tNORM:{}\n\tSTDE:{}\n\tOFFS:{:#?}",
+                        err,
+                        attr.index,
+                        attr.size,
+                        attr.data_type,
+                        attr.normalized,
+                        attr.stride,
+                        attr.offset,
+                    );
+                }
                 gl::EnableVertexAttribArray(attr.index);
+                let err = gl::GetError();
+                if err != gl::NO_ERROR {
+                    eprintln!("OpenGL error after enabling attr: {:#X}", err);
+                }
             }
         }
         vao.unbind();
